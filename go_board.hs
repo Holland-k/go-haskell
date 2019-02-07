@@ -1,4 +1,5 @@
 import Data.List
+import Control.Monad.State
 
 data Space = Space PosX PosY Symbol deriving (Show, Eq)
 type Board = [[Space]]
@@ -23,8 +24,7 @@ prRow ((Space _ _ s) : xs) = " |  " ++ show s ++ " " ++ prRow xs
  
 printBoard :: Board -> String
 printBoard b = (filler len) ++ 
-    (concat $ intersperse (filler len) (prRow <$> b)) ++ 
-    (filler len)
+    (concat $ intersperse (filler len) (prRow <$> b)) ++ (filler len)
     where len = length b
 
 showBoard :: Board -> IO()
@@ -38,9 +38,20 @@ gameInit :: Int -> Board
 gameInit n = fmap (\z -> row z) [0..n]
     where row x = fmap (\y -> createSpace x y) [0..n]
 
+updateSpace :: Space -> Symbol -> Space
+updateSpace (Space x y _) p = Space x y p 
+
 {- Game mechanics -}
-place :: GameState -> PosX -> PosY -> Maybe GameState
-place g x y = undefined
+place :: PosX -> PosY -> GameState
+place x y = undefined {- do
+    (b, p) <- get 
+    case p of 
+        B -> put (updateSpace x y p, W)
+        W -> put (updateSpace x y p, B)
+        _ -> put (b, p)
+    return GameState b p
+-}
+
 
 main :: IO()
 main = do putStrLn "go"
