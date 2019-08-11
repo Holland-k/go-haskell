@@ -54,4 +54,4 @@ place x y = undefined {- do
 
 
 main :: IO()
-main = do putStrLn "go"
+main = do putStrLn "go here for win"
