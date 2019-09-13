@@ -1,5 +1,8 @@
 import Data.List
 import Control.Monad.State
+import Graphics.Gloss
+import Graphics.Gloss.Data.Color
+import Graphics.Gloss.Interface.Pure.Game
 
 data Space = Space PosX PosY Symbol deriving (Show, Eq)
 type Board = [[Space]]
@@ -51,7 +54,22 @@ place x y = undefined {- do
         _ -> put (b, p)
     return GameState b p
 -}
-
+screenHeight :: Int
+screenHeight = 640
+screenWidth :: Int
+screenWidth = 480
+initialGame = undefined
+gameAsPicture = undefined
+transformGame = undefined
+window = InWindow "Functional" (screenWidth, screenHeight) (100,100)
+backgroundColor = makeColor 0 0 0 255
 
 main :: IO()
-main = do putStrLn "go here for win"
+main = play
+  window
+  backgroundColor
+  30
+  initialGame
+  gameAsPicture
+  transformGame
+  (const id)
