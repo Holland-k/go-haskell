@@ -1,9 +1,11 @@
 import Data.List
-import Control.Monad.State
+import Data.Array
+--import Control.Monad.State
 import Graphics.Gloss
 import Graphics.Gloss.Data.Color
 import Graphics.Gloss.Interface.Pure.Game
 
+{- 
 data Space = Space PosX PosY Symbol deriving (Show, Eq)
 type Board = [[Space]]
 data Symbol = B | W | N deriving (Show, Eq)
@@ -54,13 +56,73 @@ place x y = undefined {- do
         _ -> put (b, p)
     return GameState b p
 -}
+-}
+data Game = Game { gameBoard :: Board,
+                   gamePlayer :: Player,
+                   gameState :: State } deriving (Eq, Show)
+type Board = Array (Int, Int) Cell
+data Player = PlayerX | PlayerO deriving (Eq, Show)
+data State = Running | GameOver (Maybe Player) deriving (Eq, Show)
+data Cell = Empty | Full deriving (Eq, Show)
+
+n :: Int
+n = 9
+cellWidth :: Float
+cellWidth = fromIntegral screenWidth / fromIntegral n
+
+cellHeight :: Float
+cellHeight = fromIntegral screenHeight / fromIntegral n
+
+snapPictureToCell picture (row, column) = translate x y picture
+  where x = fromIntegral column * cellWidth + cellWidth * 0.5
+        y = fromIntegral row * cellHeight + cellHeight * 0.5
+
+boardGrid :: Picture
+boardGrid =
+  pictures $
+  concatMap (\i -> [ line [ (i*cellWidth, 0.0),
+                            (i*cellWidth, fromIntegral screenHeight)]
+                   , line [ (0.0, i * cellHeight),
+                            (fromIntegral screenWidth, i * cellHeight)]
+                   ])
+  [0.0 .. fromIntegral n]
+  
+cellsOfBoard :: Board -> Cell -> Picture -> Picture
+cellsOfBoard board cell cellPicture =
+  pictures $
+  map (snapPictureToCell cellPicture . fst) $
+  filter (\(_, e) -> e == cell) $
+  assocs board
+  
+boardAsRunningPicture board = Blank
+--boardGrid :: Board -> Picture
+
+boardAsPicture board = pictures [boardGrid]
+boardAsGameOverPicture winner board = color (greyN 0.5) (boardAsPicture board)
+
 screenHeight :: Int
 screenHeight = 640
+
 screenWidth :: Int
 screenWidth = 480
-initialGame = undefined
-gameAsPicture = undefined
-transformGame = undefined
+
+initialGame = Game
+              {gameBoard = array indexRange $
+                           zip
+                           (range indexRange)
+                           (cycle [Empty]),
+              gamePlayer = PlayerX,
+              gameState = GameOver Nothing}
+                  where indexRange = ((0,0), (n-1, n-1))
+
+gameAsPicture game = translate (fromIntegral screenWidth * (-0.5))
+                     (fromIntegral screenHeight * (-0.5))
+                     frame
+    where frame = case gameState game of
+              Running -> boardAsRunningPicture (gameBoard game)
+              GameOver winner -> boardAsGameOverPicture (gameBoard game) winner
+    
+transformGame _ game = game
 window = InWindow "Functional" (screenWidth, screenHeight) (100,100)
 backgroundColor = makeColor 0 0 0 255
 
