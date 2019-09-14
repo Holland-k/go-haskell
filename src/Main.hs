@@ -61,12 +61,13 @@ data Game = Game { gameBoard :: Board,
                    gamePlayer :: Player,
                    gameState :: State } deriving (Eq, Show)
 type Board = Array (Int, Int) Cell
-data Player = PlayerX | PlayerO deriving (Eq, Show)
+data Player = PlayerW | PlayerB deriving (Eq, Show)
 data State = Running | GameOver (Maybe Player) deriving (Eq, Show)
-data Cell = Empty | Full deriving (Eq, Show)
+type Cell = Maybe Player 
 
 n :: Int
 n = 9
+
 cellWidth :: Float
 cellWidth = fromIntegral screenWidth / fromIntegral n
 
@@ -86,33 +87,50 @@ boardGrid =
                             (fromIntegral screenWidth, i * cellHeight)]
                    ])
   [0.0 .. fromIntegral n]
-  
+
 cellsOfBoard :: Board -> Cell -> Picture -> Picture
 cellsOfBoard board cell cellPicture =
   pictures $
   map (snapPictureToCell cellPicture . fst) $
   filter (\(_, e) -> e == cell) $
   assocs board
-  
-boardAsRunningPicture board = Blank
---boardGrid :: Board -> Picture
 
-boardAsPicture board = pictures [boardGrid]
-boardAsGameOverPicture winner board = color (greyN 0.5) (boardAsPicture board)
+pPiece :: Picture
+pPiece = circleSolid (cellWidth * 0.3)
+
+wCellsOfBoard :: Board -> Picture
+wCellsOfBoard board = cellsOfBoard board (Just PlayerW) pPiece
+
+bCellsOfBoard :: Board -> Picture
+bCellsOfBoard board = cellsOfBoard board (Just PlayerB) pPiece
+
+boardAsRunningPicture board =
+  pictures [ color playerWColor $ wCellsOfBoard board,
+             color playerBColor $ bCellsOfBoard board,
+             boardGrid
+           ]
+
+boardAsPicture board =
+  pictures [wCellsOfBoard board,
+            bCellsOfBoard board,
+            boardGrid]
+  
+boardAsGameOverPicture winner board =
+  color backgroundColor (boardAsPicture board)
 
 screenHeight :: Int
 screenHeight = 640
 
 screenWidth :: Int
-screenWidth = 480
-
+screenWidth = 640
+ 
 initialGame = Game
               {gameBoard = array indexRange $
                            zip
                            (range indexRange)
-                           (cycle [Empty]),
-              gamePlayer = PlayerX,
-              gameState = GameOver Nothing}
+                           (cycle [Nothing]),
+              gamePlayer = PlayerW,
+              gameState = Running}
                   where indexRange = ((0,0), (n-1, n-1))
 
 gameAsPicture game = translate (fromIntegral screenWidth * (-0.5))
@@ -120,11 +138,37 @@ gameAsPicture game = translate (fromIntegral screenWidth * (-0.5))
                      frame
     where frame = case gameState game of
               Running -> boardAsRunningPicture (gameBoard game)
-              GameOver winner -> boardAsGameOverPicture (gameBoard game) winner
-    
+              GameOver winner -> boardAsPicture {-winner-} (gameBoard game)
+
+switchPlayer game =
+  case gamePlayer game of
+    PlayerB -> game { gamePlayer = PlayerW }
+    playerW -> game { gamePlayer = PlayerB }
+
+playerTurn :: Game -> (Int, Int) -> Game
+playerTurn game cord
+  | isCordCorrect cord && board ! cord == Nothing =
+    switchPlayer $ game { gameBoard = board // [(cord, Just player)]}
+  | otherwise = game
+    where isCordCorrect = inRange ((0,0) , (n-1,n-1))
+          board = gameBoard game
+          player = gamePlayer game
+mousePosAsCell :: (Float, Float) -> (Int, Int)
+mousePosAsCell (x,y) =
+  (floor ((y + (fromIntegral screenHeight * 0.5)) / cellHeight),
+   floor ((x + (fromIntegral screenWidth * 0.5)) / cellWidth))
+
+transformGame (EventKey (MouseButton LeftButton) Up _ mousePos) game =
+  case gameState game of
+    Running -> playerTurn game $ mousePosAsCell mousePos
+    GameOver _ -> initialGame
 transformGame _ game = game
+
 window = InWindow "Functional" (screenWidth, screenHeight) (100,100)
-backgroundColor = makeColor 0 0 0 255
+
+backgroundColor = makeColorI 230 161 99 255
+playerBColor = makeColorI 0 0 0 255
+playerWColor = makeColorI 255 255 255 255
 
 main :: IO()
 main = play
